@@ -11,10 +11,13 @@ files:
 extraMetadata:
   main: src/main/index.js
 win:
+  icon: build/icon.ico
   target:
     - nsis
   artifactName: "${productName} Setup ${version}.${ext}"
 nsis:
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
