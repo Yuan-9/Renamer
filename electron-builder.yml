@@ -1,0 +1,20 @@
+appId: com.local.renamer
+productName: Renamer
+directories:
+  output: dist
+files:
+  - dist-renderer/**
+  - src/main/**
+  - src/preload/**
+  - src/shared/**
+  - package.json
+extraMetadata:
+  main: src/main/index.js
+win:
+  target:
+    - nsis
+  artifactName: "${productName} Setup ${version}.${ext}"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
