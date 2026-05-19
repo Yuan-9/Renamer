@@ -38,7 +38,8 @@ export const DEFAULT_SETTINGS = {
   outputDirectory: null,
   recursive: true,
   useModifiedTimeFallback: false,
-  mediaFilter: "all"
+  mediaFilter: "all",
+  metadataConcurrency: null
 };
 
 export const STATUS_LABELS = {

@@ -6,6 +6,7 @@ import { buildPreview } from "./naming-service.js";
 import { executeRename, undoLastRun } from "./rename-service.js";
 import { exportLastLog } from "./log-service.js";
 import { loadSettings, saveSettings } from "./settings-service.js";
+import { getSystemInfo } from "./system-service.js";
 
 let currentAbortController = null;
 
@@ -28,15 +29,19 @@ function guarded(channel, handler) {
 export function registerIpcHandlers() {
   guarded("dialog:select-input-directory", async () => ok(await selectDirectory()));
   guarded("dialog:select-output-directory", async () => ok(await selectDirectory()));
+  guarded("system:get-info", async () => ok(getSystemInfo()));
 
   guarded("scan:start", async (event, payload) => {
     currentAbortController = new AbortController();
-    const data = await scanDirectory(payload, {
-      signal: currentAbortController.signal,
-      onProgress: (message) => progress(event, message)
-    });
-    currentAbortController = null;
-    return ok(data);
+    try {
+      const data = await scanDirectory(payload, {
+        signal: currentAbortController.signal,
+        onProgress: (message) => progress(event, message)
+      });
+      return ok(data);
+    } finally {
+      currentAbortController = null;
+    }
   });
 
   guarded("preview:build", async (event, payload) => {
@@ -46,12 +51,15 @@ export function registerIpcHandlers() {
 
   guarded("rename:execute", async (event, payload) => {
     currentAbortController = new AbortController();
-    const data = await executeRename(payload?.items ?? [], payload?.settings ?? {}, {
-      signal: currentAbortController.signal,
-      onProgress: (message) => progress(event, message)
-    });
-    currentAbortController = null;
-    return ok(data);
+    try {
+      const data = await executeRename(payload?.items ?? [], payload?.settings ?? {}, {
+        signal: currentAbortController.signal,
+        onProgress: (message) => progress(event, message)
+      });
+      return ok(data);
+    } finally {
+      currentAbortController = null;
+    }
   });
 
   guarded("task:cancel", async () => {

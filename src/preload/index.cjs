@@ -5,6 +5,7 @@ const invoke = (channel, payload) => ipcRenderer.invoke(channel, payload);
 contextBridge.exposeInMainWorld("renamer", {
   selectInputDirectory: () => invoke("dialog:select-input-directory"),
   selectOutputDirectory: () => invoke("dialog:select-output-directory"),
+  getSystemInfo: () => invoke("system:get-info"),
   scanDirectory: (payload) => invoke("scan:start", payload),
   buildPreview: (payload) => invoke("preview:build", payload),
   executeRename: (payload) => invoke("rename:execute", payload),

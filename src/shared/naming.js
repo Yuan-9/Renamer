@@ -23,8 +23,22 @@ export function pad(number, width) {
   return String(number).padStart(width, "0");
 }
 
-export function formatIndex(index) {
-  return index < 100 ? pad(index, 2) : String(index);
+function parseIndexToken(token) {
+  const match = /^index(?::([1-9]\d?|0{2,})?)?$/.exec(token);
+  if (!match) return null;
+  if (!match[1]) return { width: 2 };
+  if (/^0+$/.test(match[1])) return { width: match[1].length };
+  const width = Number(match[1]);
+  if (width < 1 || width > 99) return null;
+  return { width };
+}
+
+function isTemplateTokenAllowed(token) {
+  return TEMPLATE_TOKENS.has(token) || parseIndexToken(token) !== null;
+}
+
+export function formatIndex(index, width = 2) {
+  return pad(index, width);
 }
 
 export function normalizeMillisecond(value) {
@@ -38,16 +52,20 @@ export function validateTemplate(template) {
   if (!template || !template.trim()) {
     return { ok: false, message: "命名模板不能为空。" };
   }
-  if (ILLEGAL_FILENAME_CHARS.test(template)) {
+  const literalTemplateText = template.replace(/\{[^{}]*\}/g, "");
+  if (ILLEGAL_FILENAME_CHARS.test(literalTemplateText)) {
     return { ok: false, message: "命名模板包含 Windows 文件名非法字符。" };
   }
   const matches = template.matchAll(/\{([^{}]+)\}/g);
+  let hasIndex = false;
   for (const match of matches) {
-    if (!TEMPLATE_TOKENS.has(match[1])) {
+    const token = match[1];
+    if (!isTemplateTokenAllowed(token)) {
       return { ok: false, message: `未知模板变量：{${match[1]}}。` };
     }
+    if (parseIndexToken(token)) hasIndex = true;
   }
-  if (!template.includes("{index}")) {
+  if (!hasIndex) {
     return { ok: false, message: "命名模板必须包含 {index}，用于稳定处理冲突。" };
   }
   return { ok: true, message: null };
@@ -69,14 +87,18 @@ export function formatDateParts(dateLike, millisecond = null) {
   };
 }
 
-export function renderTemplate(template, item, indexText) {
+export function renderTemplate(template, item, index) {
   const parts = formatDateParts(item.effectiveCapturedAt, item.millisecond);
   const values = {
     ...parts,
-    index: indexText,
     original: item.originalNameWithoutExtension
   };
-  return template.replace(/\{([^{}]+)\}/g, (_, token) => values[token] ?? "");
+  const numericIndex = Number.parseInt(index, 10);
+  return template.replace(/\{([^{}]+)\}/g, (_, token) => {
+    const indexToken = parseIndexToken(token);
+    if (indexToken) return formatIndex(Number.isNaN(numericIndex) ? 0 : numericIndex, indexToken.width);
+    return values[token] ?? "";
+  });
 }
 
 export function chooseEffectiveTime(item, settings = DEFAULT_SETTINGS) {

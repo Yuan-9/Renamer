@@ -15,7 +15,7 @@ afterEach(async () => {
   await fs.rm(tempDir, { recursive: true, force: true });
 });
 
-function item(name, capturedAt = "2026-05-17T19:30:25.128Z") {
+function item(name, capturedAt = "2026-05-17T19:30:25.128") {
   const parsed = path.parse(path.join(tempDir, name));
   return {
     id: name,
@@ -46,6 +46,14 @@ describe("preview builder", () => {
     await fs.writeFile(path.join(tempDir, "2026_0517_193025_128_00.JPG"), "");
     const preview = await buildPreview([item("IMG_0001.JPG")], DEFAULT_SETTINGS);
     expect(preview.items[0].proposedName).toBe("2026_0517_193025_128_01.JPG");
+  });
+
+  it("uses index width declared in the template", async () => {
+    const preview = await buildPreview([item("IMG_0001.JPG")], {
+      ...DEFAULT_SETTINGS,
+      template: "{yyyy}_{MMdd}_{HHmmss}_{SSS}_{index:4}"
+    });
+    expect(preview.items[0].proposedName).toBe("2026_0517_193025_128_0000.JPG");
   });
 
   it("marks unsupported files as skipped", async () => {

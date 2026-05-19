@@ -3,6 +3,10 @@ import { normalizeMillisecond } from "../shared/naming.js";
 
 let exiftoolPromise = null;
 
+export const EXIFTOOL_READ_OPTIONS = {
+  defaultVideosToUTC: false
+};
+
 async function getExiftool() {
   if (!exiftoolPromise) {
     exiftoolPromise = import("exiftool-vendored")
@@ -12,7 +16,7 @@ async function getExiftool() {
   return exiftoolPromise;
 }
 
-function parseExifDate(value) {
+export function parseExifDate(value) {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   if (typeof value === "object" && typeof value.toDate === "function") {
@@ -37,16 +41,16 @@ function getSubsecond(tags, fields) {
   return null;
 }
 
-function pickMetadataTime(tags, mediaType) {
+export function pickMetadataTime(tags, mediaType) {
   const photoCandidates = [
     ["DateTimeOriginal", "EXIF DateTimeOriginal", ["SubSecTimeOriginal"]],
     ["CreateDate", "EXIF CreateDate", ["SubSecCreateDate", "SubSecTimeDigitized"]],
     ["ModifyDate", "EXIF ModifyDate", ["SubSecModifyDate"]]
   ];
   const videoCandidates = [
-    ["CreateDate", "Video creation_time", []],
-    ["MediaCreateDate", "Video creation_time", []],
-    ["TrackCreateDate", "Video creation_time", []]
+    ["MediaCreateDate", "QuickTime MediaCreateDate", []],
+    ["TrackCreateDate", "QuickTime TrackCreateDate", []],
+    ["CreateDate", "QuickTime CreateDate", []]
   ];
   const candidates = mediaType === "video" ? videoCandidates : photoCandidates;
 
@@ -84,7 +88,7 @@ export async function readMetadata(filePath, mediaType) {
   try {
     const exiftool = await getExiftool();
     if (exiftool) {
-      const tags = await exiftool.read(filePath);
+      const tags = await exiftool.read(filePath, EXIFTOOL_READ_OPTIONS);
       const picked = pickMetadataTime(tags, mediaType);
       if (picked) {
         return { ...base, ...picked };

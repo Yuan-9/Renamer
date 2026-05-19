@@ -8,6 +8,7 @@ function getApi() {
 export const renamerApi = {
   selectInputDirectory: () => getApi().selectInputDirectory(),
   selectOutputDirectory: () => getApi().selectOutputDirectory(),
+  getSystemInfo: () => getApi().getSystemInfo(),
   scanDirectory: (payload) => getApi().scanDirectory(payload),
   buildPreview: (payload) => getApi().buildPreview(payload),
   executeRename: (payload) => getApi().executeRename(payload),

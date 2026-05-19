@@ -1,6 +1,6 @@
 {
   "name": "renamer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Windows photo and video batch renaming tool.",
   "main": "src/main/index.js",
   "type": "module",
