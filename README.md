@@ -29,6 +29,10 @@ IMG_0002.JPG -> 2026_0517_193025_128_01.JPG
 VID_0003.MP4 -> 2026_0517_193026_000_00.MP4
 ```
 
+<p align="center">
+  <img alt="Renamer — Windows 照片与视频批量重命名" src="build/show.png" width="720">
+</p>
+
 ## 功能亮点
 
 - 支持照片与视频文件批量重命名。
