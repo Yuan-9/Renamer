@@ -18,6 +18,7 @@ import { renamerApi } from "./api/renamer-api.js";
 const initialProgress = { stage: "idle", current: 0, total: 0, percent: 0, remainingMs: null, elapsedMs: 0, startedAt: null };
 const initialSystemInfo = { cpuCount: 1, defaultMetadataConcurrency: 1 };
 const scanningStages = new Set(["collecting-files", "reading-metadata", "building-preview"]);
+const progressStages = new Set([...scanningStages, "renaming", "undoing"]);
 
 function unwrap(response) {
   if (!response?.ok) {
@@ -65,12 +66,26 @@ function progressCountText(progress) {
   return `${progress.current}/${progress.total}`;
 }
 
+function progressCountLabel(stage) {
+  return {
+    renaming: "已处理",
+    undoing: "已撤销",
+    "collecting-files": "已收集",
+    "reading-metadata": "已读取",
+    "building-preview": "已处理"
+  }[stage] ?? "已处理";
+}
+
 function remainingText(progress) {
   if (progress.stage === "idle") return "预计剩余：-";
   if (progress.stage === "collecting-files") return "预计剩余：计算中";
   if (progress.stage === "building-preview") return "预计剩余：即将完成";
   if (progress.stage === "completed") return "已完成";
   return `预计剩余：${formatDuration(progress.remainingMs)}`;
+}
+
+function remainingValueText(progress) {
+  return remainingText(progress).replace("预计剩余：", "");
 }
 
 function clampConcurrency(value, systemInfo) {
@@ -116,6 +131,7 @@ function App() {
   const progressPercent =
     typeof progress.percent === "number" ? progress.percent : progress.total ? Math.round((progress.current / progress.total) * 100) : 0;
   const isScanning = busy && scanningStages.has(progress.stage);
+  const isTaskProgressVisible = busy && progressStages.has(progress.stage);
   const effectiveSettings = useMemo(
     () => ({
       ...settings,
@@ -204,6 +220,7 @@ function App() {
     if (readyCount === 0) return;
     if (!window.confirm(`确认重命名 ${readyCount} 个文件？`)) return;
     setBusy(true);
+    setProgress({ ...initialProgress, stage: "renaming", total: readyCount });
     setMessage("");
     try {
       const result = unwrap(await renamerApi.executeRename({ items, settings: effectiveSettings }));
@@ -228,6 +245,7 @@ function App() {
 
   async function undoLastRun() {
     setBusy(true);
+    setProgress({ ...initialProgress, stage: "undoing" });
     try {
       const result = unwrap(await renamerApi.undoLastRun());
       setLastResult(result.summary);
@@ -395,6 +413,23 @@ function App() {
               </button>
             </label>
           )}
+          {isTaskProgressVisible && (
+            <div className="task-progress-inline" aria-live="polite">
+              <div className="task-progress-row">
+                <strong>{stageLabel(progress.stage)}</strong>
+                <span>{progressPercent}%</span>
+              </div>
+              <div className="task-progress-meter" aria-hidden="true">
+                <div style={{ width: `${progressPercent}%` }} />
+              </div>
+              <div className="task-progress-meta">
+                <span>
+                  {progressCountLabel(progress.stage)} {progressCountText(progress)}
+                </span>
+                <span>预计剩余 {remainingValueText(progress)}</span>
+              </div>
+            </div>
+          )}
           <div className="mode-actions">
             {busy ? (
               <button type="button" onClick={() => renamerApi.cancelCurrentTask()} title="取消当前任务">
@@ -478,7 +513,7 @@ function App() {
               )}
             </tbody>
           </table>
-          {isScanning && (
+          {isTaskProgressVisible && (
             <div className="scan-overlay" aria-live="polite">
               <div className="scan-card">
                 <div className="scan-pulse" />
@@ -490,10 +525,10 @@ function App() {
                 <div className="scan-details">
                   <span>
                     <b>{progressCountText(progress)}</b>
-                    已读取
+                    {progressCountLabel(progress.stage)}
                   </span>
                   <span>
-                    <b>{remainingText(progress).replace("预计剩余：", "")}</b>
+                    <b>{remainingValueText(progress)}</b>
                     预计剩余
                   </span>
                 </div>

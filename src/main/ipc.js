@@ -69,8 +69,16 @@ export function registerIpcHandlers() {
 
   guarded("log:export", async () => ok(await exportLastLog()));
   guarded("rename:undo-last", async (event) => {
-    const data = await undoLastRun({ onProgress: (message) => progress(event, message) });
-    return ok(data);
+    currentAbortController = new AbortController();
+    try {
+      const data = await undoLastRun({
+        signal: currentAbortController.signal,
+        onProgress: (message) => progress(event, message)
+      });
+      return ok(data);
+    } finally {
+      currentAbortController = null;
+    }
   });
   guarded("settings:load", async () => ok(await loadSettings()));
   guarded("settings:save", async (event, payload) => ok(await saveSettings(payload ?? {})));

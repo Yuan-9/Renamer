@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { writeRunLog, readLastLog } from "./log-service.js";
+import { createProgressReporter } from "./progress-service.js";
 
 function ensureNotCancelled(signal) {
   if (signal?.aborted) {
@@ -78,11 +79,13 @@ export async function executeRename(items, settings, options = {}) {
   const startedAt = new Date().toISOString();
   const readyItems = items.filter((item) => item.status === "ready" && item.proposedPath);
   const entries = [];
+  const reportProgress = createProgressReporter(options.onProgress);
+
+  reportProgress({ stage: "renaming", current: 0, total: readyItems.length, estimateRemaining: true });
 
   for (let index = 0; index < readyItems.length; index += 1) {
     ensureNotCancelled(options.signal);
     const item = readyItems[index];
-    options.onProgress?.({ stage: "renaming", current: index, total: readyItems.length });
     try {
       const result = await renameSafely(item.originalPath, item.proposedPath);
       entries.push({
@@ -101,9 +104,9 @@ export async function executeRename(items, settings, options = {}) {
         error: { code: error.code ?? "RENAME_FAILED", message: error.message }
       });
     }
+    reportProgress({ stage: "renaming", current: index + 1, total: readyItems.length, estimateRemaining: true });
   }
 
-  options.onProgress?.({ stage: "renaming", current: readyItems.length, total: readyItems.length });
   const summary = summarize(entries);
   const log = {
     appVersion: "0.1.0",
@@ -127,10 +130,13 @@ export async function undoLastRun(options = {}) {
   const undoEntries = lastLog.entries.filter((entry) => entry.status === "success").reverse();
   const entries = [];
   const startedAt = new Date().toISOString();
+  const reportProgress = createProgressReporter(options.onProgress);
+
+  reportProgress({ stage: "undoing", current: 0, total: undoEntries.length, estimateRemaining: true });
 
   for (let index = 0; index < undoEntries.length; index += 1) {
+    ensureNotCancelled(options.signal);
     const entry = undoEntries[index];
-    options.onProgress?.({ stage: "undoing", current: index, total: undoEntries.length });
     try {
       const result = await renameSafely(entry.targetPath, entry.originalPath);
       entries.push({
@@ -149,9 +155,9 @@ export async function undoLastRun(options = {}) {
         error: { code: error.code ?? "UNDO_FAILED", message: error.message }
       });
     }
+    reportProgress({ stage: "undoing", current: index + 1, total: undoEntries.length, estimateRemaining: true });
   }
 
-  options.onProgress?.({ stage: "undoing", current: undoEntries.length, total: undoEntries.length });
   const summary = summarize(entries);
   const logPath = await writeRunLog({
     appVersion: "0.1.0",
